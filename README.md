@@ -18,6 +18,8 @@ Spec allows:
 - generate endpoint's data deserializers
 - define custom types by applying predicates on standard types
 
+
+
 ## Ubiquitous Language
 
 **Endpoint** - is a basic deliverable unit, quant of our busines software architecture which could deal with one or many interactions.
@@ -45,6 +47,7 @@ Spec allows:
 **Endpoint Deserializer** -
 
 
+
 ## How To's
 
 ### How to describe endpoint?
@@ -59,4 +62,14 @@ Spec allows:
 
 ### How to create and use alias?
 
+### How to work with subtypes?
+
 ### How to play with type algebra?
+
+
+
+## Participation
+
+
+
+## What is Stoa?

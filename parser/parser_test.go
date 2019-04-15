@@ -7,11 +7,11 @@ import (
 )
 
 var _ = Describe("parser", func() {
-	Describe("Parser", func() {
+	Describe("ParserCombinator", func() {
 		Context("creation", func() {
-			Describe("New()", func() {
-				It("returns parser", func() {
-
+			Describe("NewParserCombinator()", func() {
+				It("returns parser combinator", func() {
+					Expect(NewParserCombinator([]Parser{})).To(BeAssignableToTypeOf(&ParserCombinator{}))
 				})
 			})
 		})
