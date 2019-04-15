@@ -14,36 +14,45 @@ var _ = Describe("parser", func() {
 				Context("when string", func() {
 					It("returns string signature", func() {
 						rawSig := rawsig.New("string")
-						signature, err := ParsePrimitive(rawSig)
+						parserCombinator := NewParserCombinator([]Parser{ParsePrimitive})
+						signature, err := ParsePrimitive(rawSig, parserCombinator)
 						Expect(err).ShouldNot(HaveOccurred())
 						Expect(signature.Title()).To(Equal("string"))
+						Expect(signature.Token()).To(Equal("string"))
 					})
 				})
 
 				Context("when int", func() {
 					It("returns int signature", func() {
 						rawSig := rawsig.New("int")
-						signature, err := ParsePrimitive(rawSig)
+						parserCombinator := NewParserCombinator([]Parser{ParsePrimitive})
+						signature, err := ParsePrimitive(rawSig, parserCombinator)
 						Expect(err).ShouldNot(HaveOccurred())
 						Expect(signature.Title()).To(Equal("int"))
+						Expect(signature.Token()).To(Equal("int"))
 					})
 				})
 
 				Context("when float", func() {
 					It("returns float signature", func() {
 						rawSig := rawsig.New("float")
-						signature, err := ParsePrimitive(rawSig)
+						parserCombinator := NewParserCombinator([]Parser{ParsePrimitive})
+						signature, err := ParsePrimitive(rawSig, parserCombinator)
 						Expect(err).ShouldNot(HaveOccurred())
 						Expect(signature.Title()).To(Equal("float"))
+						Expect(signature.Token()).To(Equal("float"))
+
 					})
 				})
 
 				Context("when bool", func() {
 					It("returns bool signature", func() {
 						rawSig := rawsig.New("bool")
-						signature, err := ParsePrimitive(rawSig)
+						parserCombinator := NewParserCombinator([]Parser{ParsePrimitive})
+						signature, err := ParsePrimitive(rawSig, parserCombinator)
 						Expect(err).ShouldNot(HaveOccurred())
 						Expect(signature.Title()).To(Equal("bool"))
+						Expect(signature.Token()).To(Equal("float"))
 					})
 				})
 			})

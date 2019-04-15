@@ -15,7 +15,7 @@ var (
 	PRIMITIVE_TOKENS = [][]rune{INT_TOKEN, STRING_TOKEN, FLOAT_TOKEN, BOOL_TOKEN}
 )
 
-func ParsePrimitive(rawSig *rawsig.RawSignature) (signature sig.Signature, err error) {
+func ParsePrimitive(rawSig *rawsig.RawSignature, _ *ParserCombinator) (signature sig.Signature, err error) {
 	var (
 		matchedRunes []rune
 		ok           bool
