@@ -52,7 +52,7 @@ var _ = Describe("parser", func() {
 						signature, err := ParsePrimitive(rawSig, parserCombinator)
 						Expect(err).ShouldNot(HaveOccurred())
 						Expect(signature.Title()).To(Equal("bool"))
-						Expect(signature.Token()).To(Equal("float"))
+						Expect(signature.Token()).To(Equal("bool"))
 					})
 				})
 			})

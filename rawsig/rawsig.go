@@ -19,10 +19,6 @@ func (rawSig *RawSignature) String() string {
 	return rawSig.rawSig
 }
 
-func (rawSig *RawSignature) Runes() []rune {
-	return rawSig.runes[rawSig.matchedCursor:]
-}
-
 func (rawSig *RawSignature) HasNext() bool {
 	return rawSig.matchingCursor < rawSig.length
 }
@@ -32,7 +28,7 @@ func (rawSig *RawSignature) Next() (r rune, err error) {
 		err = errors.New("there is no next rune")
 		return
 	}
-	r = rawSig.Runes()[rawSig.matchingCursor]
+	r = rawSig.runes[rawSig.matchingCursor]
 	rawSig.matchingCursor++
 
 	return

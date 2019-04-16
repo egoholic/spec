@@ -12,11 +12,7 @@ var (
 )
 
 func ParseSlice(rawSig *rawsig.RawSignature, parserCombinator *ParserCombinator) (signature sig.Signature, err error) {
-	var (
-		tr  rune
-		rsr rune
-	)
-
+	var tr, rsr rune
 	for _, tr = range SLICE_TOKEN {
 		rsr, err = rawSig.Next()
 		if err != nil {
@@ -29,15 +25,16 @@ func ParseSlice(rawSig *rawsig.RawSignature, parserCombinator *ParserCombinator)
 			return
 		}
 	}
-
 	matchedRunes, ok := rawSig.Commit()
 	if !ok {
+		rawSig.Reset()
 		err = errors.New("not a slice signature")
 		return
 	}
 
 	nestedSignature, err := parserCombinator.Parse(rawSig)
 	if err != nil {
+		rawSig.Reset()
 		return
 	}
 	signature = sig.NewSliceSignature(string(matchedRunes), nestedSignature)
