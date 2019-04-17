@@ -13,11 +13,17 @@ var _ = Describe("token", func() {
 			Describe(".Matches()", func() {
 				Context("when matches", func() {
 					It("returns true", func() {
-						r := 'a'
 						rawSig := rawsig.New("alberta")
-						runeToken := NewRuneToken(r)
+						runeToken := NewRuneToken('a')
 						Expect(runeToken.Matches(rawSig)).To(BeTrue())
 					})
+				})
+			})
+
+			Describe(".String()", func() {
+				It("returns string", func() {
+					runeToken := NewRuneToken('a')
+					Expect(runeToken.String()).To(Equal("a"))
 				})
 			})
 		})
@@ -31,18 +37,11 @@ var _ = Describe("token", func() {
 						Expect(anyRuneToken.Matches(rawSig)).To(BeTrue())
 					})
 				})
-			})
-		})
 
-		Describe("variantToken", func() {
-			Describe(".Matches()", func() {
-				Context("when matches", func() {
-					It("returns true", func() {
-						rawSig := rawsig.New("alberta")
-						token1 := NewRuneToken('a')
-						token2 := NewRuneToken('z')
-						varToken := NewVariantToken([]Token{token1, token2})
-						Expect(varToken.Matches(rawSig)).To(BeTrue())
+				Describe(".String()", func() {
+					It("returns string", func() {
+						anyRuneToken := NewAnyRuneToken()
+						Expect(anyRuneToken.String()).To(Equal("<any-rune>"))
 					})
 				})
 			})
@@ -52,13 +51,25 @@ var _ = Describe("token", func() {
 			Describe(".Matches()", func() {
 				Context("when matches", func() {
 					It("returns true", func() {
+						rawSig1 := rawsig.New("alberta")
+						rawSig2 := rawsig.New("zero")
+						rawSig3 := rawsig.New("kyiv")
 						token1 := NewRuneToken('a')
 						token2 := NewRuneToken('z')
 						varToken := NewVariantToken([]Token{token1, token2})
-						Expect(varToken.Matches(rawsig.New("a"))).To(BeTrue())
-						Expect(varToken.Matches(rawsig.New("z"))).To(BeTrue())
-
+						Expect(varToken.Matches(rawSig1)).To(BeTrue())
+						Expect(varToken.Matches(rawSig2)).To(BeTrue())
+						Expect(varToken.Matches(rawSig3)).To(BeFalse())
 					})
+				})
+			})
+
+			Describe(".String()", func() {
+				It("returns string", func() {
+					token1 := NewRuneToken('a')
+					token2 := NewRuneToken('z')
+					varToken := NewVariantToken([]Token{token1, token2})
+					Expect(varToken.String()).To(Equal("(one-of a z )"))
 				})
 			})
 

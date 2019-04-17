@@ -24,6 +24,7 @@ var (
 	FloatToken               = NewTokenListFromString("float")
 	BoolToken                = NewTokenListFromString("bool")
 	AnyPrimitiveTypeToken    = NewVariantToken([]Token{StringToken, IntToken, FloatToken, BoolToken})
+
 	// Words could start with ONLY a low or high latin letter.
 	WordToken            = NewWordToken(LatinLetterToken, DigitOrLatinLetterToken, nil)
 	AnyStandardTypeToken *variantToken
@@ -39,7 +40,32 @@ func init() {
 
 type Token interface {
 	Matches(*rawsig.RawSignature) bool
-	SExpr() string
+	String() string
+}
+
+type multyRuneToken struct {
+	runes []rune
+}
+
+func NewMultyRuneToken(runes []rune) *multyRuneToken {
+	return &multyRuneToken{runes}
+}
+
+func (token *multyRuneToken) Matches(rawSig *rawsig.RawSignature) bool {
+	for _, r := range token.runes {
+		rsr, err := rawSig.Next()
+		if err != nil {
+			return false
+		}
+		if rsr != r {
+			return false
+		}
+	}
+	return true
+}
+
+func (token *multyRuneToken) String() string {
+	return string(token.runes)
 }
 
 type variantToken struct {
@@ -60,13 +86,13 @@ func NewVariantTokenFromRunes(runes []rune) *variantToken {
 }
 
 func (token *variantToken) Join(token2 *variantToken) *variantToken {
-	var joined = make([]Token, 10)
-	for _, t := range token.options {
-		joined = append(joined, t)
-	}
+	joined := []Token{}
 
-	for _, t := range token2.options {
-		joined = append(joined, t)
+	for i := len(token2.options) - 1; i >= 0; i-- {
+		joined = append(joined, token2.options[i])
+	}
+	for i := len(token.options) - 1; i >= 0; i-- {
+		joined = append(joined, token.options[i])
 	}
 
 	return &variantToken{joined}
@@ -74,6 +100,10 @@ func (token *variantToken) Join(token2 *variantToken) *variantToken {
 
 func (token *variantToken) Matches(rawSig *rawsig.RawSignature) bool {
 	for _, tokenOption := range token.options {
+		if tokenOption == nil {
+			return false
+		}
+		rawSig.Reset()
 		if tokenOption.Matches(rawSig) {
 			return true
 		}
@@ -81,11 +111,11 @@ func (token *variantToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return false
 }
 
-func (token *variantToken) SExpr() string {
+func (token *variantToken) String() string {
 	builder := &strings.Builder{}
 	builder.WriteString("(one-of ")
 	for _, tokenOption := range token.options {
-		builder.WriteString(tokenOption.SExpr())
+		builder.WriteString(tokenOption.String())
 		builder.WriteRune(' ')
 	}
 	builder.WriteRune(')')
@@ -106,11 +136,11 @@ func (token *keyValuePairToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return token.key.Matches(rawSig) && token.sep.Matches(rawSig) && token.val.Matches(rawSig)
 }
 
-func (token *keyValuePairToken) SExpr() string {
+func (token *keyValuePairToken) String() string {
 	builder := &strings.Builder{}
-	builder.WriteString(token.key.SExpr())
-	builder.WriteString(token.sep.SExpr())
-	builder.WriteString(token.val.SExpr())
+	builder.WriteString(token.key.String())
+	builder.WriteString(token.sep.String())
+	builder.WriteString(token.val.String())
 	return builder.String()
 }
 
@@ -138,10 +168,10 @@ func (token *keyValuePairsSetToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return true
 }
 
-func (token *keyValuePairsSetToken) SExpr() string {
+func (token *keyValuePairsSetToken) String() string {
 	builder := &strings.Builder{}
 	for _, pairToken := range token.pairs {
-		builder.WriteString(pairToken.SExpr())
+		builder.WriteString(pairToken.String())
 	}
 	return builder.String()
 }
@@ -157,7 +187,7 @@ func (token *anyRuneToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return err == nil
 }
 
-func (token *anyRuneToken) SExpr() string {
+func (token *anyRuneToken) String() string {
 	return "<any-rune>"
 }
 
@@ -169,7 +199,7 @@ func NewRuneToken(r rune) *runeToken {
 	return &runeToken{r}
 }
 
-func (token *runeToken) SExpr() string {
+func (token *runeToken) String() string {
 	return string(token.r)
 }
 
@@ -211,14 +241,14 @@ func (token *wordToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return true
 }
 
-func (token *wordToken) SExpr() string {
+func (token *wordToken) String() string {
 	builder := &strings.Builder{}
 	if token.prefix != nil {
-		builder.WriteString(token.prefix.SExpr())
+		builder.WriteString(token.prefix.String())
 	}
-	builder.WriteString(token.root.SExpr())
+	builder.WriteString(token.root.String())
 	if token.suffix != nil {
-		builder.WriteString(token.suffix.SExpr())
+		builder.WriteString(token.suffix.String())
 	}
 
 	return builder.String()
@@ -260,11 +290,11 @@ func (token *tokenList) Next() *tokenList {
 	return token.nextElem
 }
 
-func (token *tokenList) SExpr() string {
+func (token *tokenList) String() string {
 	builder := &strings.Builder{}
 	builder.WriteRune('(')
-	builder.WriteString(token.value.SExpr())
-	builder.WriteString(token.nextElem.SExpr())
+	builder.WriteString(token.value.String())
+	builder.WriteString(token.nextElem.String())
 	builder.WriteRune(')')
 	return builder.String()
 }
