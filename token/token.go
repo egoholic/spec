@@ -14,13 +14,16 @@ var (
 	SpaceToken               = NewVariantToken([]Token{NewRuneToken(' '), NewRuneToken('\n'), NewRuneToken('\t'), NewRuneToken('\t')})
 	LowLatinLetterToken      = NewVariantTokenFromRunes([]rune("abcdefghijklmnopqrstuvwxyz"))
 	HighLatinLetterToken     = NewVariantTokenFromRunes([]rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+	LatinLetterToken         = LowLatinLetterToken.Join(HighLatinLetterToken)
 	DigitToken               = NewVariantTokenFromRunes([]rune("0123456789"))
+	DigitOrLatinLetterToken  = LatinLetterToken.Join(DigitToken)
 	StringToken              = NewTokenListFromString("string")
 	IntToken                 = NewTokenListFromString("int")
 	FloatToken               = NewTokenListFromString("float")
 	BoolToken                = NewTokenListFromString("bool")
 	AnyPrimitiveTypeToken    = NewVariantToken([]Token{StringToken, IntToken, FloatToken, BoolToken})
-
+	// Words could start with ONLY a low or high latin letter.
+	WordToken            = NewWordToken(LatinLetterToken, DigitOrLatinLetterToken, nil)
 	AnyStandardTypeToken *variantToken
 
 	SliceToken  = NewTokenListFromSlice([]Token{OpeningBracketToken, ClosingBracketToken, AnyStandardTypeToken})
@@ -151,6 +154,26 @@ type wordToken struct {
 
 func NewWordToken(prefix, root, suffix Token) *wordToken {
 	return &wordToken{prefix, root, suffix}
+}
+
+func (token *wordToken) Matches(rawSig *rawsig.RawSignature) bool {
+	if token.prefix != nil {
+		if !token.prefix.Matches(rawSig) {
+			return false
+		}
+	}
+
+	if !token.root.Matches(rawSig) {
+		return false
+	}
+
+	if token.suffix != nil {
+		if !token.suffix.Matches(rawSig) {
+			return false
+		}
+	}
+
+	return true
 }
 
 type tokenList struct {
