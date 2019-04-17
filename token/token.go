@@ -4,68 +4,120 @@ import (
 	"github.com/egoholic/spec/rawsig"
 )
 
+var (
+	ColonToken               = NewRuneToken(':')
+	SemicolonToken           = NewRuneToken(';')
+	OpeningBracketToken      = NewRuneToken('[')
+	ClosingBracketToken      = NewRuneToken(']')
+	OpeningCurlyBracketToken = NewRuneToken('{')
+	ClosingCurlyBracketToken = NewRuneToken('}')
+	SpaceToken               = NewVariantToken([]Token{NewRuneToken(' '), NewRuneToken('\n'), NewRuneToken('\t'), NewRuneToken('\t')})
+
+	StringToken           = NewTokenListFromString("string")
+	IntToken              = NewTokenListFromString("int")
+	FloatToken            = NewTokenListFromString("float")
+	BoolToken             = NewTokenListFromString("bool")
+	AnyPrimitiveTypeToken = NewVariantToken([]Token{StringToken, IntToken, FloatToken, BoolToken})
+
+	AnyStandardTypeToken *VariantToken
+
+	SliceToken  = NewTokenListFromSlice([]Token{OpeningBracketToken, ClosingBracketToken, AnyStandardTypeToken})
+	MapToken    = NewTokenListFromSlice([]Token{OpeningBracketToken, AnyPrimitiveTypeToken, ClosingBracketToken, AnyStandardTypeToken})
+	StructToken = NewTokenListFromSlice([]Token{OpeningCurlyBracketToken, ClosingCurlyBracketToken})
+)
+
+func init() {
+	AnyStandardTypeToken = NewVariantToken([]Token{StringToken, IntToken, FloatToken, BoolToken, SliceToken, MapToken, StructToken})
+}
+
 type Token interface {
 	Matches(*rawsig.RawSignature) bool
 }
 
-type SingleSymbolToken rune
+type VariantToken []Token
 
-func (token *SingleSymbolToken) Matches(rawSig *rawsig.RawSignature) bool {
-	next, err := rawSig.Next()
+func NewVariantToken(tokens []Token) *VariantToken {
+	vt := VariantToken(tokens)
+	return &vt
+}
+
+func (token *VariantToken) Matches(rawSig *rawsig.RawSignature) bool {
+	tokens := []Token(*token)
+	for _, token := range tokens {
+		if token.Matches(rawSig) {
+			return true
+		}
+	}
+	return false
+}
+
+type KeyValuePairToken struct {
+	key Token
+	sep Token
+	val Token
+}
+
+func NewKeyValuePairToken() *KeyValuePairToken {
+
+}
+
+type RuneToken rune
+
+func NewRuneToken(r rune) *RuneToken {
+	t := RuneToken(r)
+	return &t
+}
+
+func (token *RuneToken) Matches(rawSig *rawsig.RawSignature) bool {
+	runeT, err := rawSig.Next()
 	if err != nil {
 		return false
 	}
-	return rune(*token) == next
+	return runeT == rune(*token)
 }
 
-type PrimitiveToken []rune
-func (token *PrimitiveToken) Matches(rawSig *rawsig.RawSignature) bool {
-  for _, tokenRune := range *token {
-		rawSigRune, err := rawSig.Next()
-		if err != nil {
-			return false
-		}
-		if tokenRune != rawSigRune {
+type TokenList struct {
+	value    Token
+	nextElem *TokenList
+}
+
+func NewTokenList(token Token) *TokenList {
+	return &TokenList{token, nil}
+}
+
+func NewTokenListFromString(str string) *TokenList {
+	var (
+		runes     = []rune(str)
+		tokenList *TokenList
+	)
+	for i := len(runes) - 1; i >= 0; i-- {
+		tokenList = tokenList.Append(NewRuneToken(runes[i]))
+	}
+	return tokenList
+}
+
+func NewTokenListFromSlice(tokens []Token) *TokenList {
+	var tokenList *TokenList
+	for i := len(tokens) - 1; i >= 0; i-- {
+		tokenList = tokenList.Append(tokens[i])
+	}
+	return tokenList
+}
+
+func (tokenList *TokenList) Append(token Token) *TokenList {
+	return &TokenList{token, tokenList}
+}
+
+func (tokenList *TokenList) Next() *TokenList {
+	return tokenList.nextElem
+}
+
+func (tokenList *TokenList) Matches(rawSig *rawsig.RawSignature) bool {
+	var tl *TokenList
+	for tl = tokenList.Next(); tl != nil; tl = tokenList.Next() {
+		if !tl.Matches(rawSig) {
 			return false
 		}
 	}
 	return true
-}
-
-type BinaryToken struct {
-	token1 Token
-	token2 Token
-}
-
-func (token *BinaryToken) Matches(rawSig *rawsig.RawSignature) bool {
-  return token.token1.Matches(rawSig) && token.token2.Matches(rawSig)
-}
-
-type TernaryToken struct {
-	token1 Token
-	token2 Token
-	token3 Token
-}
-
-type TernaryTokenSetUniqueByFirstToken struct {
-	tokens map[string]*TernaryToken
-}
-
-func (token *TernaryToken) Matches(rawSig *rawsig.RawSignature) bool {
-  return token.token1.Matches(rawSig) && token.token2.Matches(rawSig) && token.token3.Matches(rawSig)
-}
-
-var (
-	IntToken        = PrimitiveToken("int")
-	StringToken     = PrimitiveToken("string")
-	FloatToken      = PrimitiveToken("float")
-	BoolToken       = PrimitiveToken("bool")
-	PrimitiveTokens = []PrimitiveToken{IntToken, StringToken, FloatToken, BoolToken}
-	SliceToken      = BinaryToken{PrimitiveToken("[]"), Token}
-	MapToken        = BinaryToken{PrimitiveToken("map["), Token, SingleSymbolToken(']'), Token}
-)
-
-func init() {
-	var KeyValuePairToken = TernaryToken(Token, SingleSymbolToken(':'), Token)
-	var StructToken =
 }
