@@ -1,6 +1,8 @@
 package token
 
 import (
+	"strings"
+
 	"github.com/egoholic/spec/rawsig"
 )
 
@@ -37,9 +39,11 @@ func init() {
 
 type Token interface {
 	Matches(*rawsig.RawSignature) bool
+	SExpr() string
 }
+
 type variantToken struct {
-	variants []Token
+	options []Token
 }
 
 func NewVariantToken(tokens []Token) *variantToken {
@@ -57,11 +61,11 @@ func NewVariantTokenFromRunes(runes []rune) *variantToken {
 
 func (token *variantToken) Join(token2 *variantToken) *variantToken {
 	var joined = make([]Token, 10)
-	for _, t := range token.variants {
+	for _, t := range token.options {
 		joined = append(joined, t)
 	}
 
-	for _, t := range token2.variants {
+	for _, t := range token2.options {
 		joined = append(joined, t)
 	}
 
@@ -69,12 +73,23 @@ func (token *variantToken) Join(token2 *variantToken) *variantToken {
 }
 
 func (token *variantToken) Matches(rawSig *rawsig.RawSignature) bool {
-	for _, token := range token.variants {
-		if token.Matches(rawSig) {
+	for _, tokenOption := range token.options {
+		if tokenOption.Matches(rawSig) {
 			return true
 		}
 	}
 	return false
+}
+
+func (token *variantToken) SExpr() string {
+	builder := &strings.Builder{}
+	builder.WriteString("(one-of ")
+	for _, tokenOption := range token.options {
+		builder.WriteString(tokenOption.SExpr())
+		builder.WriteRune(' ')
+	}
+	builder.WriteRune(')')
+	return builder.String()
 }
 
 type keyValuePairToken struct {
@@ -91,8 +106,12 @@ func (token *keyValuePairToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return token.key.Matches(rawSig) && token.sep.Matches(rawSig) && token.val.Matches(rawSig)
 }
 
-func (token *keyValuePairToken) MatchesWithoutKey(rawSig *rawsig.RawSignature) bool {
-	return token.sep.Matches(rawSig) && token.val.Matches(rawSig)
+func (token *keyValuePairToken) SExpr() string {
+	builder := &strings.Builder{}
+	builder.WriteString(token.key.SExpr())
+	builder.WriteString(token.sep.SExpr())
+	builder.WriteString(token.val.SExpr())
+	return builder.String()
 }
 
 type keyValuePairsSetToken struct {
@@ -119,6 +138,14 @@ func (token *keyValuePairsSetToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return true
 }
 
+func (token *keyValuePairsSetToken) SExpr() string {
+	builder := &strings.Builder{}
+	for _, pairToken := range token.pairs {
+		builder.WriteString(pairToken.SExpr())
+	}
+	return builder.String()
+}
+
 type anyRuneToken struct{}
 
 func NewAnyRuneToken() *anyRuneToken {
@@ -130,12 +157,20 @@ func (token *anyRuneToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return err == nil
 }
 
+func (token *anyRuneToken) SExpr() string {
+	return "<any-rune>"
+}
+
 type runeToken struct {
 	r rune
 }
 
 func NewRuneToken(r rune) *runeToken {
 	return &runeToken{r}
+}
+
+func (token *runeToken) SExpr() string {
+	return string(token.r)
 }
 
 func (token *runeToken) Matches(rawSig *rawsig.RawSignature) bool {
@@ -176,6 +211,19 @@ func (token *wordToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return true
 }
 
+func (token *wordToken) SExpr() string {
+	builder := &strings.Builder{}
+	if token.prefix != nil {
+		builder.WriteString(token.prefix.SExpr())
+	}
+	builder.WriteString(token.root.SExpr())
+	if token.suffix != nil {
+		builder.WriteString(token.suffix.SExpr())
+	}
+
+	return builder.String()
+}
+
 type tokenList struct {
 	value    Token
 	nextElem *tokenList
@@ -208,8 +256,17 @@ func (tailToken *tokenList) Append(headToken Token) *tokenList {
 	return &tokenList{headToken, tailToken}
 }
 
-func (tokenList *tokenList) Next() *tokenList {
-	return tokenList.nextElem
+func (token *tokenList) Next() *tokenList {
+	return token.nextElem
+}
+
+func (token *tokenList) SExpr() string {
+	builder := &strings.Builder{}
+	builder.WriteRune('(')
+	builder.WriteString(token.value.SExpr())
+	builder.WriteString(token.nextElem.SExpr())
+	builder.WriteRune(')')
+	return builder.String()
 }
 
 func (token *tokenList) Matches(rawSig *rawsig.RawSignature) bool {
