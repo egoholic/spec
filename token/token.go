@@ -21,7 +21,7 @@ var (
 	BoolToken                = NewTokenListFromString("bool")
 	AnyPrimitiveTypeToken    = NewVariantToken([]Token{StringToken, IntToken, FloatToken, BoolToken})
 
-	AnyStandardTypeToken *VariantToken
+	AnyStandardTypeToken *variantToken
 
 	SliceToken  = NewTokenListFromSlice([]Token{OpeningBracketToken, ClosingBracketToken, AnyStandardTypeToken})
 	MapToken    = NewTokenListFromSlice([]Token{OpeningBracketToken, AnyPrimitiveTypeToken, ClosingBracketToken, AnyStandardTypeToken})
@@ -35,37 +35,24 @@ func init() {
 type Token interface {
 	Matches(*rawsig.RawSignature) bool
 }
-
-type ExceptToken struct {
-	token Token
-}
-
-func NewExceptToken(token Token) *ExceptToken {
-	return &ExceptToken{token}
-}
-
-func (token *ExceptToken) Matches(rawSig *rawsig.RawSignature) bool {
-	return !token.token.Matches(rawSig)
-}
-
-type VariantToken struct {
+type variantToken struct {
 	variants []Token
 }
 
-func NewVariantToken(tokens []Token) *VariantToken {
-	return &VariantToken{tokens}
+func NewVariantToken(tokens []Token) *variantToken {
+	return &variantToken{tokens}
 }
 
-func NewVariantTokenFromRunes(runes []rune) *VariantToken {
+func NewVariantTokenFromRunes(runes []rune) *variantToken {
 	var tokens []Token
 	for _, r := range runes {
 		tokens = append(tokens, NewRuneToken(r))
 	}
 
-	return &VariantToken{tokens}
+	return &variantToken{tokens}
 }
 
-func (token *VariantToken) Join(token2 *VariantToken) *VariantToken {
+func (token *variantToken) Join(token2 *variantToken) *variantToken {
 	var joined = make([]Token, 10)
 	for _, t := range token.variants {
 		joined = append(joined, t)
@@ -75,10 +62,10 @@ func (token *VariantToken) Join(token2 *VariantToken) *VariantToken {
 		joined = append(joined, t)
 	}
 
-	return &VariantToken{joined}
+	return &variantToken{joined}
 }
 
-func (token *VariantToken) Matches(rawSig *rawsig.RawSignature) bool {
+func (token *variantToken) Matches(rawSig *rawsig.RawSignature) bool {
 	for _, token := range token.variants {
 		if token.Matches(rawSig) {
 			return true
@@ -87,30 +74,30 @@ func (token *VariantToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return false
 }
 
-type KeyValuePairToken struct {
+type keyValuePairToken struct {
 	key Token
 	sep Token
 	val Token
 }
 
-func NewKeyValuePairToken(key, sep, val Token) *KeyValuePairToken {
-	return &KeyValuePairToken{key, sep, val}
+func NewKeyValuePairToken(key, sep, val Token) *keyValuePairToken {
+	return &keyValuePairToken{key, sep, val}
 }
 
-func (token *KeyValuePairToken) Matches(rawSig *rawsig.RawSignature) bool {
+func (token *keyValuePairToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return token.key.Matches(rawSig) && token.sep.Matches(rawSig) && token.val.Matches(rawSig)
 }
 
-func (token *KeyValuePairToken) MatchesWithoutKey(rawSig *rawsig.RawSignature) bool {
+func (token *keyValuePairToken) MatchesWithoutKey(rawSig *rawsig.RawSignature) bool {
 	return token.sep.Matches(rawSig) && token.val.Matches(rawSig)
 }
 
-type KeyValuePairsSetToken struct {
-	pairs map[Token]*KeyValuePairToken
+type keyValuePairsSetToken struct {
+	pairs map[Token]*keyValuePairToken
 }
 
-func NewKeyValuePairsSetToken(pairs map[Token]*KeyValuePairToken) *KeyValuePairsSetToken {
-	return &KeyValuePairsSetToken{pairs}
+func NewKeyValuePairsSetToken(pairs map[Token]*keyValuePairToken) *keyValuePairsSetToken {
+	return &keyValuePairsSetToken{pairs}
 }
 
 // This naive implementation assumes that key-value pairs are ordered and order matters during comparing.
@@ -120,7 +107,7 @@ func NewKeyValuePairsSetToken(pairs map[Token]*KeyValuePairToken) *KeyValuePairs
 // So that:
 //     a:1 and a:1, b:2 could not match.
 //
-func (token *KeyValuePairsSetToken) Matches(rawSig *rawsig.RawSignature) bool {
+func (token *keyValuePairsSetToken) Matches(rawSig *rawsig.RawSignature) bool {
 	for _, pairToken := range token.pairs {
 		if !pairToken.Matches(rawSig) {
 			return false
@@ -129,26 +116,26 @@ func (token *KeyValuePairsSetToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return true
 }
 
-type AnyRuneToken struct{}
+type anyRuneToken struct{}
 
-func NewAnyRuneToken() *AnyRuneToken {
-	return &AnyRuneToken{}
+func NewAnyRuneToken() *anyRuneToken {
+	return &anyRuneToken{}
 }
 
-func (token *AnyRuneToken) Matches(rawSig *rawsig.RawSignature) bool {
+func (token *anyRuneToken) Matches(rawSig *rawsig.RawSignature) bool {
 	_, err := rawSig.Next()
 	return err == nil
 }
 
-type RuneToken struct {
+type runeToken struct {
 	r rune
 }
 
-func NewRuneToken(r rune) *RuneToken {
-	return &RuneToken{r}
+func NewRuneToken(r rune) *runeToken {
+	return &runeToken{r}
 }
 
-func (token *RuneToken) Matches(rawSig *rawsig.RawSignature) bool {
+func (token *runeToken) Matches(rawSig *rawsig.RawSignature) bool {
 	r, err := rawSig.Next()
 	if err != nil {
 		return false
@@ -156,28 +143,29 @@ func (token *RuneToken) Matches(rawSig *rawsig.RawSignature) bool {
 	return r == token.r
 }
 
-type WordToken struct {
-	tokenList *TokenList
+type wordToken struct {
+	prefix Token
+	root   Token
+	suffix Token
 }
 
-func NewWordToken(word string) *WordToken {
-	runes := []rune(word)
-
+func NewWordToken(prefix, root, suffix Token) *wordToken {
+	return &wordToken{prefix, root, suffix}
 }
 
-type TokenList struct {
+type tokenList struct {
 	value    Token
-	nextElem *TokenList
+	nextElem *tokenList
 }
 
-func NewTokenList(token Token) *TokenList {
-	return &TokenList{token, nil}
+func NewTokenList(token Token) *tokenList {
+	return &tokenList{token, nil}
 }
 
-func NewTokenListFromString(str string) *TokenList {
+func NewTokenListFromString(str string) *tokenList {
 	var (
 		runes     = []rune(str)
-		tokenList *TokenList
+		tokenList *tokenList
 	)
 	for i := len(runes) - 1; i >= 0; i-- {
 		tokenList = tokenList.Append(NewRuneToken(runes[i]))
@@ -185,25 +173,25 @@ func NewTokenListFromString(str string) *TokenList {
 	return tokenList
 }
 
-func NewTokenListFromSlice(tokens []Token) *TokenList {
-	var tokenList *TokenList
+func NewTokenListFromSlice(tokens []Token) *tokenList {
+	var tokenList *tokenList
 	for i := len(tokens) - 1; i >= 0; i-- {
 		tokenList = tokenList.Append(tokens[i])
 	}
 	return tokenList
 }
 
-func (tokenList *TokenList) Append(token Token) *TokenList {
-	return &TokenList{token, tokenList}
+func (tailToken *tokenList) Append(headToken Token) *tokenList {
+	return &tokenList{headToken, tailToken}
 }
 
-func (tokenList *TokenList) Next() *TokenList {
+func (tokenList *tokenList) Next() *tokenList {
 	return tokenList.nextElem
 }
 
-func (tokenList *TokenList) Matches(rawSig *rawsig.RawSignature) bool {
-	var tl *TokenList
-	for tl = tokenList.Next(); tl != nil; tl = tokenList.Next() {
+func (token *tokenList) Matches(rawSig *rawsig.RawSignature) bool {
+	var tl *tokenList
+	for tl = token.Next(); tl != nil; tl = token.Next() {
 		if !tl.Matches(rawSig) {
 			return false
 		}
